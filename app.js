@@ -189,8 +189,9 @@ function createCardElement(card, index) {
   image.className = "card-image";
   image.src = card.thumbnail;
   image.alt = `${card.title} QSL 卡面`;
-  image.loading = index < 4 ? "eager" : "lazy";
+  image.loading = "lazy";
   image.decoding = "async";
+  image.fetchPriority = "low";
   image.addEventListener("error", () => {
     imageWrap.classList.add("is-error");
     image.alt = `${card.title}图片加载失败`;
@@ -245,6 +246,7 @@ function setFilter(filter) {
 }
 
 function fillDialog(card) {
+  dialogImage.fetchPriority = "high";
   dialogImage.src = card.image;
   dialogImage.alt = `${card.title} QSL 卡面大图`;
   dialogKicker.textContent = `BA4THG / ${card.format.toUpperCase()}`;
@@ -314,7 +316,7 @@ dialog.addEventListener("click", (event) => {
 });
 
 dialog.addEventListener("close", () => {
-  dialogImage.src = "";
+  dialogImage.removeAttribute("src");
 });
 
 document.addEventListener("keydown", (event) => {

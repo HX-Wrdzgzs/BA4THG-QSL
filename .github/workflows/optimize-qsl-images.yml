@@ -13,14 +13,12 @@ on:
   pull_request:
     types:
       - opened
+      - synchronize
+      - reopened
   workflow_dispatch:
 
 permissions:
   contents: write
-
-concurrency:
-  group: optimize-qsl-images-main
-  cancel-in-progress: true
 
 jobs:
   optimize:

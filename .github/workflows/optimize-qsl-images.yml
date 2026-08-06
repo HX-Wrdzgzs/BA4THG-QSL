@@ -10,11 +10,6 @@ on:
       - "index.html"
       - "scripts/optimize_images.py"
       - ".github/workflows/optimize-qsl-images.yml"
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
   workflow_dispatch:
 
 permissions:
@@ -22,7 +17,6 @@ permissions:
 
 jobs:
   optimize:
-    if: github.event_name != 'pull_request' || github.event.pull_request.title == 'Run QSL image optimization'
     runs-on: ubuntu-latest
 
     steps:

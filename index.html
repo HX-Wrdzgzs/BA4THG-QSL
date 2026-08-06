@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#f4f4f2">
   <title>BA4THG · QSL Card Archive</title>
   <link rel="icon" type="image/svg+xml" href="./assets/ba4thg-mark.svg">
+  <link rel="preload" as="image" href="./图片/A面 南京二桥航拍-small.png" fetchpriority="high">
   <link rel="stylesheet" href="./styles.css">
   <script src="./app.js" defer></script>
 </head>
@@ -57,13 +58,13 @@
 
       <div class="hero-gallery reveal" aria-label="精选卡面预览">
         <figure class="hero-card hero-card-main">
-          <img src="./图片/A面 南京二桥航拍.png" alt="南京二桥航拍主题 QSL 卡片">
+          <img src="./图片/A面 南京二桥航拍-small.png" alt="南京二桥航拍主题 QSL 卡片" loading="eager" decoding="async" fetchpriority="high">
         </figure>
         <figure class="hero-card hero-card-tall">
-          <img src="./图片/A面 南京四桥航拍 竖拍.png" alt="南京四桥竖版航拍主题 QSL 卡片">
+          <img src="./图片/A面 南京四桥航拍 竖拍-small.png" alt="南京四桥竖版航拍主题 QSL 卡片" loading="eager" decoding="async">
         </figure>
         <figure class="hero-card hero-card-accent">
-          <img src="./图片/A面 mzk 1 2版.png" alt="晓山瑞希主题 QSL 卡片">
+          <img src="./图片/A面 mzk 1 2版.png" alt="晓山瑞希主题 QSL 卡片" loading="lazy" decoding="async" fetchpriority="low">
         </figure>
         <div class="hero-callout" aria-hidden="true">
           <span>QSL</span>
@@ -130,7 +131,7 @@
   <dialog class="card-dialog" data-card-dialog aria-labelledby="dialog-title">
     <div class="dialog-shell">
       <div class="dialog-media">
-        <img data-dialog-image src="" alt="">
+        <img data-dialog-image alt="" decoding="async">
       </div>
       <div class="dialog-panel">
         <button class="dialog-close" type="button" data-dialog-close aria-label="关闭卡面预览">关闭</button>

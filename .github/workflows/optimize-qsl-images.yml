@@ -9,6 +9,9 @@ on:
       - "app.js"
       - "index.html"
       - ".github/workflows/optimize-qsl-images.yml"
+  issues:
+    types:
+      - opened
   workflow_dispatch:
 
 permissions:
@@ -20,6 +23,7 @@ concurrency:
 
 jobs:
   optimize:
+    if: github.event_name != 'issues' || github.event.issue.title == 'Run QSL image optimization'
     runs-on: ubuntu-latest
 
     steps:
@@ -54,7 +58,6 @@ jobs:
           THUMB_DIR = ROOT / "图片" / "thumbs"
           THUMB_DIR.mkdir(parents=True, exist_ok=True)
 
-          # Remove stale fingerprinted thumbnails before rebuilding.
           for stale in THUMB_DIR.glob("*.webp"):
               stale.unlink()
 
@@ -100,8 +103,6 @@ jobs:
 
           updated_catalog = card_pattern.sub(optimize_card, catalog)
           app_text = app_text[:catalog_start] + updated_catalog + app_text[catalog_end:]
-
-          # The gallery is below the Hero section, so all gallery thumbnails can be lazy.
           app_text = app_text.replace(
               '  image.loading = index < 4 ? "eager" : "lazy";\n  image.decoding = "async";',
               '  image.loading = "lazy";\n  image.decoding = "async";\n  image.fetchPriority = "low";',
@@ -249,5 +250,3 @@ jobs:
           git add -A -- app.js index.html README.md _headers "图片/thumbs"
           git commit -m "Optimize QSL image delivery [skip ci]"
           git push origin HEAD:main
-
-# This comment intentionally retriggers the workflow after registration.

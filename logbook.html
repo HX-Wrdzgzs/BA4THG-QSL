@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="BA4THG 全时段公开通联日志，可按呼号、年份、模式与频段查询。">
+  <meta name="theme-color" content="#f5f5f2">
+  <title>BA4THG · QSO Logbook</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/ba4thg-mark.svg">
+  <link rel="stylesheet" href="./qso.css">
+  <script src="./qso.js" defer></script>
+</head>
+<body data-page="logbook">
+  <header class="qso-header">
+    <a class="qso-brand" href="./index.html">
+      <img src="./assets/ba4thg-mark.svg" alt="">
+      <span><strong>BA4THG</strong><small>QSO ARCHIVE</small></span>
+    </a>
+    <nav aria-label="主导航">
+      <a href="./index.html">QSL 卡面</a>
+      <a class="is-current" href="./logbook.html" aria-current="page">通联日志</a>
+      <a href="./admin.html">录入后台</a>
+    </nav>
+  </header>
+
+  <main class="qso-main">
+    <section class="qso-hero">
+      <p class="qso-eyebrow">BA4THG DIGITAL RADIO ARCHIVE</p>
+      <h1>全时段通联日志</h1>
+      <p>网站优先读取自有 Cloudflare D1 档案；D1 尚未配置时，会临时显示现有公开 API 的近一年记录。</p>
+    </section>
+
+    <section class="query-panel" aria-labelledby="query-title">
+      <div class="panel-heading">
+        <div>
+          <p class="section-index">01 / QUERY</p>
+          <h2 id="query-title">查询通联</h2>
+        </div>
+        <p>查看 BA4THG 的公开日志，或输入你的呼号检查双方是否存在公开通联记录。</p>
+      </div>
+
+      <form class="query-form" data-query-form>
+        <label>
+          <span>呼号</span>
+          <input name="callsign" value="BA4THG" maxlength="16" autocomplete="off" spellcheck="false" required>
+        </label>
+        <label>
+          <span>查询方向</span>
+          <select name="role">
+            <option value="operator">该呼号作为本台</option>
+            <option value="contact">该呼号作为对方</option>
+          </select>
+        </label>
+        <label>
+          <span>年份</span>
+          <input name="year" inputmode="numeric" pattern="\d{4}" maxlength="4" placeholder="全部">
+        </label>
+        <label>
+          <span>模式</span>
+          <select name="mode">
+            <option value="">全部</option>
+            <option>FM</option>
+            <option>SSB</option>
+            <option>CW</option>
+            <option>FT8</option>
+            <option>DMR</option>
+          </select>
+        </label>
+        <label>
+          <span>频段</span>
+          <select name="band">
+            <option value="">全部</option>
+            <option>2m</option>
+            <option>70cm</option>
+            <option>6m</option>
+            <option>10m</option>
+            <option>20m</option>
+            <option>40m</option>
+          </select>
+        </label>
+        <button class="solid-button" type="submit">开始查询</button>
+      </form>
+      <p class="form-note">查询只在提交表单和翻页时发送，不会高频轮询上游接口。</p>
+    </section>
+
+    <section class="summary-grid" aria-label="通联摘要" data-summary hidden>
+      <article><strong data-summary-qso>0</strong><span>通联记录</span></article>
+      <article><strong data-summary-contact>—</strong><span>不同呼号</span></article>
+      <article><strong data-summary-sent>—</strong><span>已寄 QSL</span></article>
+      <article><strong data-summary-received>—</strong><span>已收 QSL</span></article>
+    </section>
+
+    <section class="result-section" aria-labelledby="result-title">
+      <div class="panel-heading compact">
+        <div>
+          <p class="section-index">02 / LOGBOOK</p>
+          <h2 id="result-title">查询结果</h2>
+        </div>
+        <p data-result-meta>准备查询。</p>
+      </div>
+
+      <div class="source-banner" data-source-banner hidden></div>
+      <div class="loading-state" data-loading hidden>正在读取通联档案……</div>
+      <div class="error-state" data-error hidden></div>
+      <div class="empty-state-qso" data-empty hidden>没有找到符合条件的公开通联记录。</div>
+      <div class="qso-list" data-qso-list></div>
+
+      <nav class="pagination" aria-label="日志分页" data-pagination hidden>
+        <button type="button" data-prev>上一页</button>
+        <span data-page-label>第 1 页</span>
+        <button type="button" data-next>下一页</button>
+      </nav>
+    </section>
+  </main>
+
+  <footer class="qso-footer">
+    <p><strong>BA4THG</strong> · Digital Radio Archive</p>
+    <p>73，期待与你在电波中相遇。</p>
+  </footer>
+</body>
+</html>

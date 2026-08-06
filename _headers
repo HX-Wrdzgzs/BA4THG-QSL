@@ -1,11 +1,20 @@
 /*
   X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'; upgrade-insecure-requests
 
 /
   Cache-Control: public, max-age=0, must-revalidate
 
 /index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/logbook.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/admin.html
   Cache-Control: public, max-age=0, must-revalidate
 
 /app.js
@@ -14,11 +23,26 @@
 /styles.css
   Cache-Control: public, max-age=0, must-revalidate
 
+/qso.js
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/admin.js
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/qso.css
+  Cache-Control: public, max-age=3600, must-revalidate
+
 /图片/thumbs/*
   Cache-Control: public, max-age=31536000, immutable
 
 /图片/*.png
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 
+/图片/*.webp
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
 /assets/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/api/*
+  Cache-Control: no-store

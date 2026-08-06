@@ -249,3 +249,5 @@ jobs:
           git add -A -- app.js index.html README.md _headers "图片/thumbs"
           git commit -m "Optimize QSL image delivery [skip ci]"
           git push origin HEAD:main
+
+# This comment intentionally retriggers the workflow after registration.

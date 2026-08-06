@@ -1,0 +1,8 @@
+# Source design files are not part of the public static site
+PSD/
+
+# Local/editor and deployment staging files
+.DS_Store
+Thumbs.db
+*.tmp
+.pages-upload/

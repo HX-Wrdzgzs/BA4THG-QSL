@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="BA4THG 的 QSL 卡片档案，展示当前使用与收藏的 QSL 卡面设计。">
+  <meta name="theme-color" content="#f4f4f2">
+  <title>BA4THG · QSL Card Archive</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/ba4thg-mark.svg">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#gallery">跳到卡面画廊</a>
+
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="返回页面顶部">
+      <img class="brand-mark" src="./assets/ba4thg-mark.svg" alt="" aria-hidden="true">
+      <span class="brand-copy">
+        <strong>BA4THG</strong>
+        <small>QSL CARD ARCHIVE</small>
+      </span>
+    </a>
+
+    <nav class="site-nav" aria-label="主导航">
+      <a href="#gallery">卡面</a>
+      <a href="#station">电台</a>
+      <button class="theme-toggle" type="button" aria-label="切换明暗主题">
+        <span data-theme-label>暗色</span>
+      </button>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy reveal">
+        <p class="eyebrow">AMATEUR RADIO · NANJING</p>
+        <h1 id="hero-title">把每一次通联，<br>留在一张卡片上。</h1>
+        <p class="hero-intro">这里收录 BA4THG 当前拥有的 QSL 卡面。城市、角色与音游主题，都来自不同阶段的兴趣与记忆。</p>
+        <a class="primary-action" href="#gallery">浏览全部卡面</a>
+
+        <dl class="hero-stats" aria-label="卡面统计">
+          <div>
+            <dt data-front-count>10</dt>
+            <dd>A 面设计</dd>
+          </div>
+          <div>
+            <dt data-back-count>2</dt>
+            <dd>B 面设计</dd>
+          </div>
+          <div>
+            <dt>BA</dt>
+            <dd>中国业余电台</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="hero-gallery reveal" aria-label="精选卡面预览">
+        <figure class="hero-card hero-card-main">
+          <img src="./图片/A面 南京二桥航拍.png" alt="南京二桥航拍主题 QSL 卡片">
+        </figure>
+        <figure class="hero-card hero-card-tall">
+          <img src="./图片/A面 南京四桥航拍 竖拍.png" alt="南京四桥竖版航拍主题 QSL 卡片">
+        </figure>
+        <figure class="hero-card hero-card-accent">
+          <img src="./图片/A面 mzk 1 2版.png" alt="晓山瑞希主题 QSL 卡片">
+        </figure>
+        <div class="hero-callout" aria-hidden="true">
+          <span>QSL</span>
+          <strong>73</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="archive" id="gallery" aria-labelledby="gallery-title">
+      <div class="section-heading reveal">
+        <h2 id="gallery-title">卡面档案</h2>
+        <p>点击任意卡片查看大图。筛选只改变当前视图，不会隐藏你的原始文件。</p>
+      </div>
+
+      <div class="filter-bar reveal" role="group" aria-label="卡面分类筛选">
+        <button class="filter-chip is-active" type="button" data-filter="all" aria-pressed="true">全部</button>
+        <button class="filter-chip" type="button" data-filter="city" aria-pressed="false">南京与航拍</button>
+        <button class="filter-chip" type="button" data-filter="character" aria-pressed="false">角色主题</button>
+        <button class="filter-chip" type="button" data-filter="rhythm" aria-pressed="false">音游与特别款</button>
+        <button class="filter-chip" type="button" data-filter="back" aria-pressed="false">B 面</button>
+      </div>
+
+      <div class="card-grid" data-card-grid aria-live="polite"></div>
+      <p class="empty-state" data-empty-state hidden>当前分类还没有卡面。</p>
+    </section>
+
+    <section class="station" id="station" aria-labelledby="station-title">
+      <div class="station-copy reveal">
+        <p class="station-index">BA4THG / 01</p>
+        <h2 id="station-title">关于这个档案</h2>
+        <p>QSL 卡片是通联记录，也是个人电台的视觉名片。这个页面只展示已经完成的卡面，不把 PSD 工程文件公开到网页中。</p>
+      </div>
+
+      <dl class="station-details reveal">
+        <div>
+          <dt>呼号</dt>
+          <dd>BA4THG</dd>
+        </div>
+        <div>
+          <dt>主要活动地</dt>
+          <dd>南京</dd>
+        </div>
+        <div>
+          <dt>设备</dt>
+          <dd>泉盛 UV-K5 / Yaesu FT-1907R / Yaesu FT-1900 / Motorola GM3688</dd>
+        </div>
+        <div>
+          <dt>天线</dt>
+          <dd>设备原装天线 / 华鸿 1.2 m 玻璃钢天线 / 2.2 m 玻璃钢天线 / 老鹰 SRH-771</dd>
+        </div>
+        <div>
+          <dt>QRZ</dt>
+          <dd><a class="station-link" href="https://www.qrz.com/db/BA4THG" target="_blank" rel="noreferrer">查看 BA4THG 主页</a></dd>
+        </div>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p><strong>BA4THG</strong> · QSL Card Archive</p>
+    <p>73，期待与你在电波中相遇。</p>
+  </footer>
+
+  <dialog class="card-dialog" data-card-dialog aria-labelledby="dialog-title">
+    <div class="dialog-shell">
+      <div class="dialog-media">
+        <img data-dialog-image src="" alt="">
+      </div>
+      <div class="dialog-panel">
+        <button class="dialog-close" type="button" data-dialog-close aria-label="关闭卡面预览">关闭</button>
+        <p class="dialog-kicker" data-dialog-kicker></p>
+        <h2 id="dialog-title" data-dialog-title></h2>
+        <p class="dialog-description" data-dialog-description></p>
+        <dl class="dialog-meta">
+          <div>
+            <dt>版式</dt>
+            <dd data-dialog-format></dd>
+          </div>
+          <div>
+            <dt>分组</dt>
+            <dd data-dialog-category></dd>
+          </div>
+        </dl>
+        <div class="dialog-actions">
+          <button type="button" data-dialog-prev>上一张</button>
+          <button type="button" data-dialog-next>下一张</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <noscript>
+    <p class="noscript">此页面需要 JavaScript 才能生成卡面画廊和大图预览。</p>
+  </noscript>
+</body>
+</html>

@@ -55,13 +55,13 @@ async function queryD1(db, url, operatorCallsign) {
   const summary = await db.prepare(`
     SELECT
       COUNT(*) AS qso_count,
-      COUNT(DISTINCT their_callsign) AS contact_count,
+      COUNT(DISTINCT CASE WHEN ? = 'contact' THEN my_callsign ELSE their_callsign END) AS contact_count,
       SUM(CASE WHEN qsl_sent = 1 THEN 1 ELSE 0 END) AS qsl_sent_count,
       SUM(CASE WHEN qsl_received = 1 THEN 1 ELSE 0 END) AS qsl_received_count,
       MIN(qso_datetime_utc) AS first_qso,
       MAX(qso_datetime_utc) AS latest_qso
     FROM qsos WHERE ${whereSql}
-  `).bind(...filters.bindings).first();
+  `).bind(filters.role, ...filters.bindings).first();
 
   return {
     callsign: filters.callsign,

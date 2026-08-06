@@ -1,0 +1,251 @@
+name: Optimize QSL images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "图片/**/*.png"
+      - "app.js"
+      - "index.html"
+      - ".github/workflows/optimize-qsl-images.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: optimize-qsl-images-main
+  cancel-in-progress: true
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install image encoder
+        run: python -m pip install --disable-pip-version-check Pillow
+
+      - name: Generate WebP thumbnails and update page references
+        shell: bash
+        run: |
+          python <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import re
+          from pathlib import Path
+
+          from PIL import Image, ImageOps
+
+          ROOT = Path(".")
+          APP_PATH = ROOT / "app.js"
+          INDEX_PATH = ROOT / "index.html"
+          THUMB_DIR = ROOT / "图片" / "thumbs"
+          THUMB_DIR.mkdir(parents=True, exist_ok=True)
+
+          # Remove stale fingerprinted thumbnails before rebuilding.
+          for stale in THUMB_DIR.glob("*.webp"):
+              stale.unlink()
+
+          app_text = APP_PATH.read_text(encoding="utf-8")
+          catalog_start = app_text.index("const cardCatalog = [")
+          catalog_end = app_text.index("\n];", catalog_start)
+          catalog = app_text[catalog_start:catalog_end]
+
+          card_pattern = re.compile(r"  \{\n(?P<body>.*?)\n  \},", re.DOTALL)
+          generated: dict[str, str] = {}
+
+          def optimize_card(match: re.Match[str]) -> str:
+              block = match.group(0)
+              card_id_match = re.search(r'id:\s*"([^"]+)"', block)
+              image_match = re.search(r'image:\s*"([^"]+)"', block)
+              if not card_id_match or not image_match:
+                  return block
+
+              card_id = card_id_match.group(1)
+              source_rel = image_match.group(1).removeprefix("./")
+              source = ROOT / source_rel
+              if not source.is_file():
+                  raise FileNotFoundError(f"Missing source image for {card_id}: {source}")
+
+              digest = hashlib.sha256(source.read_bytes()).hexdigest()[:12]
+              output_rel = f"图片/thumbs/{card_id}.{digest}.webp"
+              output = ROOT / output_rel
+
+              with Image.open(source) as original:
+                  image = ImageOps.exif_transpose(original)
+                  image.thumbnail((960, 960), Image.Resampling.LANCZOS)
+                  if image.mode not in {"RGB", "RGBA"}:
+                      image = image.convert("RGBA" if "transparency" in image.info else "RGB")
+                  image.save(output, "WEBP", quality=74, method=6, optimize=True)
+
+              generated[card_id] = f"./{output_rel}"
+              return re.sub(
+                  r'thumbnail:\s*"[^"]+"',
+                  f'thumbnail: "./{output_rel}"',
+                  block,
+                  count=1,
+              )
+
+          updated_catalog = card_pattern.sub(optimize_card, catalog)
+          app_text = app_text[:catalog_start] + updated_catalog + app_text[catalog_end:]
+
+          # The gallery is below the Hero section, so all gallery thumbnails can be lazy.
+          app_text = app_text.replace(
+              '  image.loading = index < 4 ? "eager" : "lazy";\n  image.decoding = "async";',
+              '  image.loading = "lazy";\n  image.decoding = "async";\n  image.fetchPriority = "low";',
+          )
+          app_text = app_text.replace(
+              'function fillDialog(card) {\n  dialogImage.src = card.image;',
+              'function fillDialog(card) {\n  dialogImage.fetchPriority = "high";\n  dialogImage.src = card.image;',
+          )
+          app_text = app_text.replace(
+              'dialog.addEventListener("close", () => {\n  dialogImage.src = "";\n});',
+              'dialog.addEventListener("close", () => {\n  dialogImage.removeAttribute("src");\n});',
+          )
+          APP_PATH.write_text(app_text, encoding="utf-8", newline="\n")
+
+          required_ids = {
+              "nanjing-second-bridge",
+              "nanjing-fourth-bridge-portrait",
+              "mizuki-01",
+          }
+          missing = required_ids.difference(generated)
+          if missing:
+              raise RuntimeError(f"Hero thumbnail IDs not generated: {sorted(missing)}")
+
+          index_text = INDEX_PATH.read_text(encoding="utf-8")
+          hero_cards = {
+              "hero-card-main": (
+                  "nanjing-second-bridge",
+                  "南京二桥航拍主题 QSL 卡片",
+                  ' fetchpriority="high"',
+              ),
+              "hero-card-tall": (
+                  "nanjing-fourth-bridge-portrait",
+                  "南京四桥竖版航拍主题 QSL 卡片",
+                  "",
+              ),
+              "hero-card-accent": (
+                  "mizuki-01",
+                  "晓山瑞希主题 QSL 卡片",
+                  "",
+              ),
+          }
+
+          for class_name, (card_id, alt, priority) in hero_cards.items():
+              pattern = re.compile(
+                  rf'(<figure class="hero-card {re.escape(class_name)}">\s*)<img\b[^>]*>',
+                  re.DOTALL,
+              )
+              replacement = (
+                  rf'\1<img src="{generated[card_id]}" alt="{alt}" '
+                  rf'loading="eager" decoding="async"{priority}>'
+              )
+              index_text, count = pattern.subn(replacement, index_text, count=1)
+              if count != 1:
+                  raise RuntimeError(f"Could not update Hero image: {class_name}")
+
+          preload = (
+              f'  <link rel="preload" as="image" href="{generated["nanjing-second-bridge"]}" '
+              'type="image/webp" fetchpriority="high">'
+          )
+          preload_pattern = re.compile(r'  <link rel="preload" as="image"[^>]*>\n')
+          if preload_pattern.search(index_text):
+              index_text = preload_pattern.sub(preload + "\n", index_text, count=1)
+          else:
+              favicon_line = '  <link rel="icon" type="image/svg+xml" href="./assets/ba4thg-mark.svg">'
+              index_text = index_text.replace(favicon_line, favicon_line + "\n" + preload, 1)
+
+          index_text = index_text.replace(
+              '<img data-dialog-image src="" alt="">',
+              '<img data-dialog-image alt="" decoding="async">',
+          )
+          INDEX_PATH.write_text(index_text, encoding="utf-8", newline="\n")
+
+          (ROOT / "_headers").write_text(
+              """/*
+            X-Content-Type-Options: nosniff
+            Referrer-Policy: strict-origin-when-cross-origin
+
+          /
+            Cache-Control: public, max-age=0, must-revalidate
+
+          /index.html
+            Cache-Control: public, max-age=0, must-revalidate
+
+          /app.js
+            Cache-Control: public, max-age=0, must-revalidate
+
+          /styles.css
+            Cache-Control: public, max-age=0, must-revalidate
+
+          /图片/thumbs/*
+            Cache-Control: public, max-age=31536000, immutable
+
+          /图片/*.png
+            Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+          /assets/*
+            Cache-Control: public, max-age=31536000, immutable
+          """,
+              encoding="utf-8",
+              newline="\n",
+          )
+
+          (ROOT / "README.md").write_text(
+              """# BA4THG QSL Card Archive
+
+          这是一个无需前端构建工具的静态 QSL 卡片展示页。原始 PNG 保存在 `图片/`，页面首屏和画廊只加载经过压缩的 WebP 缩略图；用户点击卡片后，浏览器才请求对应的原始大图。
+
+          ## 本地预览
+
+          直接双击 `index.html` 即可查看。为了避免浏览器对本地文件的限制，也可以在本目录启动任意静态文件服务器。
+
+          ## 新增卡面
+
+          1. 将导出的 PNG 放入 `图片/`。
+          2. 打开 `app.js`，在 `cardCatalog` 中新增一条记录，并让 `image` 指向原始 PNG。
+          3. 推送到 `main` 后，GitHub Actions 会自动生成带内容指纹的 WebP 缩略图并更新页面引用。
+          4. 可用分类为 `city`、`character`、`rhythm` 和 `back`。
+
+          ## 缓存策略
+
+          Cloudflare Pages 通过 `_headers` 对 HTML、JavaScript 和 CSS 使用重新验证策略；带内容指纹的 WebP 与静态资源使用长期缓存。原始 PNG 采用较短缓存，并且只在大图预览时加载。
+
+          `CRAC.png` 和哈希命名 PNG 的用途尚未确认，暂未加入公开画廊。
+          """,
+              encoding="utf-8",
+              newline="\n",
+          )
+
+          print(f"Generated {len(generated)} WebP thumbnails")
+          for card_id, path in generated.items():
+              size = (ROOT / path.removeprefix("./")).stat().st_size
+              print(f"- {card_id}: {path} ({size / 1024:.1f} KiB)")
+          PY
+
+      - name: Commit optimized assets to main
+        shell: bash
+        run: |
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "No generated changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- app.js index.html README.md _headers "图片/thumbs"
+          git commit -m "Optimize QSL image delivery [skip ci]"
+          git push origin HEAD:main

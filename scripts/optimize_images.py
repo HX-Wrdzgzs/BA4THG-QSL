@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import re
-import textwrap
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -11,180 +10,217 @@ ROOT = Path(__file__).resolve().parents[1]
 APP_PATH = ROOT / "app.js"
 INDEX_PATH = ROOT / "index.html"
 THUMB_DIR = ROOT / "图片" / "thumbs"
+FULL_DIR = ROOT / "图片" / "webp"
 THUMB_DIR.mkdir(parents=True, exist_ok=True)
+FULL_DIR.mkdir(parents=True, exist_ok=True)
 
-app_text = APP_PATH.read_text(encoding="utf-8")
-catalog_start = app_text.index("const cardCatalog = [")
-catalog_end = app_text.index("\n];", catalog_start)
-catalog = app_text[catalog_start:catalog_end]
-card_pattern = re.compile(r"  \{\n(?P<body>.*?)\n  \},", re.DOTALL)
-generated: dict[str, str] = {}
+SOURCE_IMAGES = {
+    "nanjing-second-bridge": "图片/A面 南京二桥航拍.png",
+    "nanjing-fourth-bridge-portrait": "图片/A面 南京四桥航拍 竖拍.png",
+    "nanjing-fourth-bridge-angle": "图片/A面 南京四桥航拍 斜拍.png",
+    "mizuki-01": "图片/A面 mzk 1 2版.png",
+    "mizuki-02": "图片/A面 mzk 2 2版.png",
+    "ena-01": "图片/A面 ena 1 2版.png",
+    "ena-02": "图片/A面 ena 2 2版.png",
+    "kanade-01": "图片/A面 knd 1 2版.png",
+    "maimai-prism-plus": "图片/A面 maimai prism plus.png",
+    "rll-quotes": "图片/A面 RLL经典语录.png",
+    "back-landscape": "图片/QSL横版B面.png",
+    "back-portrait": "图片/QSL竖版B面.png",
+}
 
 
-def optimize_card(match: re.Match[str]) -> str:
-    block = match.group(0)
-    card_id_match = re.search(r'id:\s*"([^"]+)"', block)
-    image_match = re.search(r'image:\s*"([^"]+)"', block)
-    if not card_id_match or not image_match:
+def webp_ready(image: Image.Image) -> Image.Image:
+    if image.mode in {"RGB", "RGBA"}:
+        return image
+    if "A" in image.getbands() or "transparency" in image.info:
+        return image.convert("RGBA")
+    return image.convert("RGB")
+
+
+def generate_assets() -> dict[str, dict[str, str]]:
+    generated: dict[str, dict[str, str]] = {}
+    expected_thumbnails: set[Path] = set()
+    expected_full_images: set[Path] = set()
+
+    for card_id, source_rel in SOURCE_IMAGES.items():
+        source = ROOT / source_rel
+        if not source.is_file():
+            raise FileNotFoundError(f"Missing source image for {card_id}: {source}")
+
+        digest = hashlib.sha256(source.read_bytes()).hexdigest()[:12]
+        thumb_rel = Path("图片") / "thumbs" / f"{card_id}.{digest}.webp"
+        full_rel = Path("图片") / "webp" / f"{card_id}.{digest}.webp"
+        thumb_path = ROOT / thumb_rel
+        full_path = ROOT / full_rel
+
+        with Image.open(source) as original:
+            normalized = ImageOps.exif_transpose(original)
+
+            full_image = webp_ready(normalized.copy())
+            full_image.save(
+                full_path,
+                "WEBP",
+                quality=88,
+                method=6,
+                optimize=True,
+            )
+
+            thumbnail = normalized.copy()
+            thumbnail.thumbnail((960, 960), Image.Resampling.LANCZOS)
+            thumbnail = webp_ready(thumbnail)
+            thumbnail.save(
+                thumb_path,
+                "WEBP",
+                quality=74,
+                method=6,
+                optimize=True,
+            )
+
+        expected_thumbnails.add(thumb_path)
+        expected_full_images.add(full_path)
+        generated[card_id] = {
+            "thumbnail": f"./{thumb_rel.as_posix()}",
+            "image": f"./{full_rel.as_posix()}",
+        }
+
+    for stale in THUMB_DIR.glob("*.webp"):
+        if stale not in expected_thumbnails:
+            stale.unlink()
+    for stale in FULL_DIR.glob("*.webp"):
+        if stale not in expected_full_images:
+            stale.unlink()
+
+    return generated
+
+
+def update_app(generated: dict[str, dict[str, str]]) -> None:
+    app_text = APP_PATH.read_text(encoding="utf-8")
+    catalog_start = app_text.index("const cardCatalog = [")
+    catalog_end = app_text.index("\n];", catalog_start)
+    catalog = app_text[catalog_start:catalog_end]
+    card_pattern = re.compile(r"  \{\n(?P<body>.*?)\n  \},", re.DOTALL)
+    updated_ids: set[str] = set()
+
+    def update_card(match: re.Match[str]) -> str:
+        block = match.group(0)
+        card_id_match = re.search(r'id:\s*"([^"]+)"', block)
+        if not card_id_match:
+            return block
+
+        card_id = card_id_match.group(1)
+        paths = generated.get(card_id)
+        if not paths:
+            raise KeyError(f"No image source mapping for catalog card: {card_id}")
+
+        updated_ids.add(card_id)
+        block, thumb_count = re.subn(
+            r'thumbnail:\s*"[^"]+"',
+            f'thumbnail: "{paths["thumbnail"]}"',
+            block,
+            count=1,
+        )
+        block, image_count = re.subn(
+            r'image:\s*"[^"]+"',
+            f'image: "{paths["image"]}"',
+            block,
+            count=1,
+        )
+        if thumb_count != 1 or image_count != 1:
+            raise RuntimeError(f"Could not update image fields for {card_id}")
         return block
 
-    card_id = card_id_match.group(1)
-    source_rel = image_match.group(1).removeprefix("./")
-    source = ROOT / source_rel
-    if not source.is_file():
-        raise FileNotFoundError(f"Missing source image for {card_id}: {source}")
+    updated_catalog = card_pattern.sub(update_card, catalog)
+    missing = set(SOURCE_IMAGES).difference(updated_ids)
+    if missing:
+        raise RuntimeError(f"Source mappings missing from cardCatalog: {sorted(missing)}")
 
-    digest = hashlib.sha256(source.read_bytes()).hexdigest()[:12]
-    output_rel = f"图片/thumbs/{card_id}.{digest}.webp"
-    output = ROOT / output_rel
-
-    with Image.open(source) as original:
-        image = ImageOps.exif_transpose(original)
-        image.thumbnail((720, 720), Image.Resampling.LANCZOS)
-        if image.mode not in {"RGB", "RGBA"}:
-            image = image.convert("RGBA" if "transparency" in image.info else "RGB")
-        image.save(output, "WEBP", quality=72, method=6, optimize=True)
-
-    generated[card_id] = f"./{output_rel}"
-    return re.sub(
-        r'thumbnail:\s*"[^"]+"',
-        f'thumbnail: "./{output_rel}"',
-        block,
-        count=1,
+    app_text = app_text[:catalog_start] + updated_catalog + app_text[catalog_end:]
+    app_text = app_text.replace(
+        '  image.loading = index < 4 ? "eager" : "lazy";\n  image.decoding = "async";',
+        '  image.loading = "lazy";\n  image.decoding = "async";\n  image.fetchPriority = "low";',
+    )
+    app_text = app_text.replace(
+        'function fillDialog(card) {\n  dialogImage.src = card.image;',
+        'function fillDialog(card) {\n  dialogImage.fetchPriority = "high";\n  dialogImage.src = card.image;',
+    )
+    app_text = app_text.replace(
+        'dialog.addEventListener("close", () => {\n  dialogImage.src = "";\n});',
+        'dialog.addEventListener("close", () => {\n  dialogImage.removeAttribute("src");\n});',
     )
 
+    if re.search(r"\.png(?:[?\"'\s#]|$)", app_text, re.IGNORECASE):
+        raise RuntimeError("app.js still contains a PNG page reference")
+    APP_PATH.write_text(app_text, encoding="utf-8", newline="\n")
 
-updated_catalog = card_pattern.sub(optimize_card, catalog)
-app_text = app_text[:catalog_start] + updated_catalog + app_text[catalog_end:]
-app_text = app_text.replace(
-    '  image.loading = index < 4 ? "eager" : "lazy";\n  image.decoding = "async";',
-    '  image.loading = "lazy";\n  image.decoding = "async";\n  image.fetchPriority = "low";',
-)
-app_text = app_text.replace(
-    'function fillDialog(card) {\n  dialogImage.src = card.image;',
-    'function fillDialog(card) {\n  dialogImage.fetchPriority = "high";\n  dialogImage.src = card.image;',
-)
-app_text = app_text.replace(
-    'dialog.addEventListener("close", () => {\n  dialogImage.src = "";\n});',
-    'dialog.addEventListener("close", () => {\n  dialogImage.removeAttribute("src");\n});',
-)
-APP_PATH.write_text(app_text, encoding="utf-8", newline="\n")
 
-required_ids = {
-    "nanjing-second-bridge",
-    "nanjing-fourth-bridge-portrait",
-    "mizuki-01",
-}
-missing = required_ids.difference(generated)
-if missing:
-    raise RuntimeError(f"Hero thumbnail IDs not generated: {sorted(missing)}")
+def update_index(generated: dict[str, dict[str, str]]) -> None:
+    index_text = INDEX_PATH.read_text(encoding="utf-8")
+    hero_cards = {
+        "hero-card-main": (
+            "nanjing-second-bridge",
+            "南京二桥航拍主题 QSL 卡片",
+            ' fetchpriority="high"',
+        ),
+        "hero-card-tall": (
+            "nanjing-fourth-bridge-portrait",
+            "南京四桥竖版航拍主题 QSL 卡片",
+            "",
+        ),
+        "hero-card-accent": (
+            "mizuki-01",
+            "晓山瑞希主题 QSL 卡片",
+            "",
+        ),
+    }
 
-index_text = INDEX_PATH.read_text(encoding="utf-8")
-hero_cards = {
-    "hero-card-main": (
-        "nanjing-second-bridge",
-        "南京二桥航拍主题 QSL 卡片",
-        ' fetchpriority="high"',
-    ),
-    "hero-card-tall": (
-        "nanjing-fourth-bridge-portrait",
-        "南京四桥竖版航拍主题 QSL 卡片",
-        "",
-    ),
-    "hero-card-accent": (
-        "mizuki-01",
-        "晓山瑞希主题 QSL 卡片",
-        "",
-    ),
-}
+    for class_name, (card_id, alt, priority) in hero_cards.items():
+        pattern = re.compile(
+            rf'(<figure class="hero-card {re.escape(class_name)}">\s*)<img\b[^>]*>',
+            re.DOTALL,
+        )
+        replacement = (
+            rf'\1<img src="{generated[card_id]["thumbnail"]}" alt="{alt}" '
+            rf'loading="eager" decoding="async"{priority}>'
+        )
+        index_text, count = pattern.subn(replacement, index_text, count=1)
+        if count != 1:
+            raise RuntimeError(f"Could not update Hero image: {class_name}")
 
-for class_name, (card_id, alt, priority) in hero_cards.items():
-    pattern = re.compile(
-        rf'(<figure class="hero-card {re.escape(class_name)}">\s*)<img\b[^>]*>',
-        re.DOTALL,
+    preload = (
+        f'  <link rel="preload" as="image" href="{generated["nanjing-second-bridge"]["thumbnail"]}" '
+        'type="image/webp" fetchpriority="high">'
     )
-    replacement = (
-        rf'\1<img src="{generated[card_id]}" alt="{alt}" '
-        rf'loading="eager" decoding="async"{priority}>'
+    preload_pattern = re.compile(r'  <link rel="preload" as="image"[^>]*>\n')
+    if preload_pattern.search(index_text):
+        index_text = preload_pattern.sub(preload + "\n", index_text, count=1)
+    else:
+        favicon_line = '  <link rel="icon" type="image/svg+xml" href="./assets/ba4thg-mark.svg">'
+        index_text = index_text.replace(favicon_line, favicon_line + "\n" + preload, 1)
+
+    index_text = index_text.replace(
+        '<img data-dialog-image src="" alt="">',
+        '<img data-dialog-image alt="" decoding="async">',
     )
-    index_text, count = pattern.subn(replacement, index_text, count=1)
-    if count != 1:
-        raise RuntimeError(f"Could not update Hero image: {class_name}")
+    if re.search(r"\.png(?:[?\"'\s#]|$)", index_text, re.IGNORECASE):
+        raise RuntimeError("index.html still contains a PNG page reference")
+    INDEX_PATH.write_text(index_text, encoding="utf-8", newline="\n")
 
-preload = (
-    f'  <link rel="preload" as="image" href="{generated["nanjing-second-bridge"]}" '
-    'type="image/webp" fetchpriority="high">'
-)
-preload_pattern = re.compile(r'  <link rel="preload" as="image"[^>]*>\n')
-if preload_pattern.search(index_text):
-    index_text = preload_pattern.sub(preload + "\n", index_text, count=1)
-else:
-    favicon_line = '  <link rel="icon" type="image/svg+xml" href="./assets/ba4thg-mark.svg">'
-    index_text = index_text.replace(favicon_line, favicon_line + "\n" + preload, 1)
 
-index_text = index_text.replace(
-    '<img data-dialog-image src="" alt="">',
-    '<img data-dialog-image alt="" decoding="async">',
-)
-INDEX_PATH.write_text(index_text, encoding="utf-8", newline="\n")
+def main() -> None:
+    generated = generate_assets()
+    update_app(generated)
+    update_index(generated)
 
-headers = textwrap.dedent(
-    """\
-    /*
-      X-Content-Type-Options: nosniff
-      Referrer-Policy: strict-origin-when-cross-origin
+    print(f"Generated {len(generated)} WebP thumbnail/full-size pairs")
+    for card_id, paths in generated.items():
+        thumb_size = (ROOT / paths["thumbnail"].removeprefix("./")).stat().st_size
+        full_size = (ROOT / paths["image"].removeprefix("./")).stat().st_size
+        print(
+            f"- {card_id}: thumbnail={thumb_size / 1024:.1f} KiB, "
+            f"full={full_size / 1024:.1f} KiB"
+        )
 
-    /
-      Cache-Control: public, max-age=0, must-revalidate
 
-    /index.html
-      Cache-Control: public, max-age=0, must-revalidate
-
-    /app.js
-      Cache-Control: public, max-age=0, must-revalidate
-
-    /styles.css
-      Cache-Control: public, max-age=0, must-revalidate
-
-    /图片/thumbs/*
-      Cache-Control: public, max-age=31536000, immutable
-
-    /图片/*.png
-      Cache-Control: public, max-age=604800, stale-while-revalidate=86400
-
-    /assets/*
-      Cache-Control: public, max-age=86400, stale-while-revalidate=604800
-    """
-)
-(ROOT / "_headers").write_text(headers, encoding="utf-8", newline="\n")
-
-readme = textwrap.dedent(
-    """\
-    # BA4THG QSL Card Archive
-
-    这是一个无需前端构建工具的静态 QSL 卡片展示页。原始 PNG 保存在 `图片/`，页面首屏和画廊只加载经过压缩的 WebP 缩略图；用户点击卡片后，浏览器才请求对应的原始大图。
-
-    ## 本地预览
-
-    直接双击 `index.html` 即可查看。为了避免浏览器对本地文件的限制，也可以在本目录启动任意静态文件服务器。
-
-    ## 新增卡面
-
-    1. 将导出的 PNG 放入 `图片/`。
-    2. 打开 `app.js`，在 `cardCatalog` 中新增一条记录，并让 `image` 指向原始 PNG。
-    3. 推送到 `main` 后，GitHub Actions 会自动生成带内容指纹的 WebP 缩略图并更新页面引用。
-    4. 可用分类为 `city`、`character`、`rhythm` 和 `back`。
-
-    ## 缓存策略
-
-    Cloudflare Pages 通过 `_headers` 对 HTML、JavaScript 和 CSS 使用重新验证策略；带内容指纹的 WebP 使用长期不可变缓存。原始 PNG 采用较短缓存，并且只在大图预览时加载。
-
-    `CRAC.png` 和哈希命名 PNG 的用途尚未确认，暂未加入公开画廊。
-    """
-)
-(ROOT / "README.md").write_text(readme, encoding="utf-8", newline="\n")
-
-print(f"Generated {len(generated)} WebP thumbnails")
-for card_id, path in generated.items():
-    size = (ROOT / path.removeprefix("./")).stat().st_size
-    print(f"- {card_id}: {path} ({size / 1024:.1f} KiB)")
+if __name__ == "__main__":
+    main()

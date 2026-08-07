@@ -15,6 +15,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: optimize-qsl-images-main
+  cancel-in-progress: true
+
 jobs:
   optimize:
     runs-on: ubuntu-latest
@@ -34,8 +38,29 @@ jobs:
       - name: Install Pillow
         run: python -m pip install --disable-pip-version-check Pillow
 
-      - name: Generate optimized assets
+      - name: Generate WebP thumbnails and full-size images
         run: python scripts/optimize_images.py
+
+      - name: Verify page image references
+        run: |
+          if grep -RInE '\.png([?"'"'"'[:space:]#]|$)' index.html app.js; then
+            echo "PNG page reference detected."
+            exit 1
+          fi
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          paths = list((Path("图片") / "thumbs").glob("*.webp"))
+          paths += list((Path("图片") / "webp").glob("*.webp"))
+          if not paths:
+              raise SystemExit("No WebP assets were generated")
+          for path in paths:
+              with Image.open(path) as image:
+                  if image.format != "WEBP":
+                      raise SystemExit(f"Not a valid WebP: {path}")
+          print(f"Validated {len(paths)} WebP assets")
+          PY
 
       - name: Commit optimized assets to main
         run: |
@@ -45,6 +70,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -- app.js index.html README.md _headers "图片/thumbs"
-          git commit -m "Optimize QSL image delivery [skip ci]"
+          git add -A -- app.js index.html "图片/thumbs" "图片/webp"
+          git commit -m "Convert QSL display images to WebP [skip ci]"
           git push origin HEAD:main

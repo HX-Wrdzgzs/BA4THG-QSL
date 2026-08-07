@@ -8,7 +8,7 @@ const cardCatalog = [
     categoryLabel: "南京与航拍",
     format: "横版 A 面",
     thumbnail: "./图片/thumbs/nanjing-second-bridge.160e3b6c23bb.webp",
-    image: "./图片/A面 南京二桥航拍.png",
+    image: "./图片/webp/nanjing-second-bridge.160e3b6c23bb.webp",
     description: "以南京二桥航拍画面为主体的横版 QSL 卡面。",
   },
   {
@@ -18,7 +18,7 @@ const cardCatalog = [
     categoryLabel: "南京与航拍",
     format: "竖版 A 面",
     thumbnail: "./图片/thumbs/nanjing-fourth-bridge-portrait.2451bc55f803.webp",
-    image: "./图片/A面 南京四桥航拍 竖拍.png",
+    image: "./图片/webp/nanjing-fourth-bridge-portrait.2451bc55f803.webp",
     description: "面向竖版构图制作的南京四桥航拍主题 QSL 卡面。",
   },
   {
@@ -28,7 +28,7 @@ const cardCatalog = [
     categoryLabel: "南京与航拍",
     format: "横版 A 面",
     thumbnail: "./图片/thumbs/nanjing-fourth-bridge-angle.443a72433171.webp",
-    image: "./图片/A面 南京四桥航拍 斜拍.png",
+    image: "./图片/webp/nanjing-fourth-bridge-angle.443a72433171.webp",
     description: "采用斜向航拍视角的南京四桥主题 QSL 卡面。",
   },
   {
@@ -38,7 +38,7 @@ const cardCatalog = [
     categoryLabel: "角色主题",
     format: "横版 A 面",
     thumbnail: "./图片/thumbs/mizuki-01.7b9cff704693.webp",
-    image: "./图片/A面 mzk 1 2版.png",
+    image: "./图片/webp/mizuki-01.7b9cff704693.webp",
     description: "晓山瑞希主题的第一款 QSL 卡面设计。",
   },
   {
@@ -48,7 +48,7 @@ const cardCatalog = [
     categoryLabel: "角色主题",
     format: "横版 A 面",
     thumbnail: "./图片/thumbs/mizuki-02.89fc8774eab8.webp",
-    image: "./图片/A面 mzk 2 2版.png",
+    image: "./图片/webp/mizuki-02.89fc8774eab8.webp",
     description: "晓山瑞希主题的第二款 QSL 卡面设计。",
   },
   {
@@ -58,7 +58,7 @@ const cardCatalog = [
     categoryLabel: "角色主题",
     format: "横版 A 面",
     thumbnail: "./图片/thumbs/ena-01.077e4dcadedd.webp",
-    image: "./图片/A面 ena 1 2版.png",
+    image: "./图片/webp/ena-01.077e4dcadedd.webp",
     description: "东云绘名主题的第一款 QSL 卡面设计。",
   },
   {
@@ -68,7 +68,7 @@ const cardCatalog = [
     categoryLabel: "角色主题",
     format: "横版 A 面",
     thumbnail: "./图片/thumbs/ena-02.c9dd5ab0bda5.webp",
-    image: "./图片/A面 ena 2 2版.png",
+    image: "./图片/webp/ena-02.c9dd5ab0bda5.webp",
     description: "东云绘名主题的第二款 QSL 卡面设计。",
   },
   {
@@ -78,7 +78,7 @@ const cardCatalog = [
     categoryLabel: "角色主题",
     format: "横版 A 面",
     thumbnail: "./图片/thumbs/kanade-01.66ad0aedb135.webp",
-    image: "./图片/A面 knd 1 2版.png",
+    image: "./图片/webp/kanade-01.66ad0aedb135.webp",
     description: "宵崎奏主题的 QSL 卡面设计。",
   },
   {
@@ -88,7 +88,7 @@ const cardCatalog = [
     categoryLabel: "音游与特别款",
     format: "横版 A 面",
     thumbnail: "./图片/thumbs/maimai-prism-plus.e810fe8904c4.webp",
-    image: "./图片/A面 maimai prism plus.png",
+    image: "./图片/webp/maimai-prism-plus.e810fe8904c4.webp",
     description: "以 maimai PRiSM PLUS 为主题制作的 QSL 卡面。",
   },
   {
@@ -98,7 +98,7 @@ const cardCatalog = [
     categoryLabel: "音游与特别款",
     format: "横版 A 面",
     thumbnail: "./图片/thumbs/rll-quotes.bd5ce1849721.webp",
-    image: "./图片/A面 RLL经典语录.png",
+    image: "./图片/webp/rll-quotes.bd5ce1849721.webp",
     description: "以 RLL 经典语录为主题的特别款 QSL 卡面。",
   },
   {
@@ -108,7 +108,7 @@ const cardCatalog = [
     categoryLabel: "B 面",
     format: "横版 B 面",
     thumbnail: "./图片/thumbs/back-landscape.5ced0fafa89e.webp",
-    image: "./图片/QSL横版B面.png",
+    image: "./图片/webp/back-landscape.5ced0fafa89e.webp",
     description: "用于横版 QSL 卡片的通用背面信息版式。",
   },
   {
@@ -118,7 +118,7 @@ const cardCatalog = [
     categoryLabel: "B 面",
     format: "竖版 B 面",
     thumbnail: "./图片/thumbs/back-portrait.e9221812affe.webp",
-    image: "./图片/QSL竖版B面.png",
+    image: "./图片/webp/back-portrait.e9221812affe.webp",
     description: "用于竖版 QSL 卡片的通用背面信息版式。",
   },
 ];

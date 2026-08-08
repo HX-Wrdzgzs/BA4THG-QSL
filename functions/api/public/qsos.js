@@ -1,8 +1,6 @@
 import { error, isValidCallsign, json, normalizeCallsign, parsePositiveInt } from '../../_lib/http.js';
 import { rowToPublicItem } from '../../_lib/qso.js';
 
-const UPSTREAM_DEFAULT = 'https://api.mzyyun.com';
-
 function buildWhere(url, operatorCallsign) {
   const role = url.searchParams.get('role') === 'contact' ? 'contact' : 'operator';
   const callsign = normalizeCallsign(url.searchParams.get('callsign') || operatorCallsign);
@@ -84,56 +82,18 @@ async function queryD1(db, url, operatorCallsign) {
   };
 }
 
-async function queryUpstream(url, operatorCallsign, env) {
-  const page = parsePositiveInt(url.searchParams.get('page'), 1, 1, 100000);
-  const limit = parsePositiveInt(url.searchParams.get('limit'), 20, 1, 50);
-  const role = url.searchParams.get('role') === 'contact' ? 'contact' : 'operator';
-  const callsign = normalizeCallsign(url.searchParams.get('callsign') || operatorCallsign);
-  if (!isValidCallsign(callsign)) throw new Error('呼号格式无效');
-
-  const upstream = new URL('/public/qso', String(env.UPSTREAM_API_BASE || UPSTREAM_DEFAULT));
-  upstream.searchParams.set('callsign', callsign);
-  upstream.searchParams.set('role', role);
-  upstream.searchParams.set('page', String(page));
-  upstream.searchParams.set('limit', String(limit));
-
-  const response = await fetch(upstream, { headers: { accept: 'application/json' } });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || `上游接口返回 ${response.status}`);
-
-  return {
-    ...data,
-    summary: {
-      qsoCount: Number(data.total || 0),
-      contactCount: null,
-      qslSentCount: null,
-      qslReceivedCount: null,
-      firstQso: null,
-      latestQso: data.items?.[0]?.qsoDatetime || null,
-    },
-    source: 'upstream_fallback',
-    archiveCoverage: 'last-year-only',
-    warning: 'D1 尚未绑定或尚无归档数据，当前临时显示上游 API 的近一年公开记录。',
-  };
-}
-
 export async function onRequestGet(context) {
+  if (!context.env.DB) return error('D1 数据库尚未绑定为 DB', 503);
+
   const url = new URL(context.request.url);
   const operatorCallsign = normalizeCallsign(context.env.OPERATOR_CALLSIGN || 'BA4THG');
 
   try {
-    if (context.env.DB) {
-      const result = await queryD1(context.env.DB, url, operatorCallsign);
-      if (result.total > 0 || url.searchParams.has('year') || url.searchParams.has('mode') || url.searchParams.has('band')) {
-        return json(result, { headers: { 'cache-control': 'public, max-age=60, s-maxage=300' } });
-      }
-    }
-
-    const fallback = await queryUpstream(url, operatorCallsign, context.env);
-    return json(fallback, { headers: { 'cache-control': 'public, max-age=30, s-maxage=120' } });
+    const result = await queryD1(context.env.DB, url, operatorCallsign);
+    return json(result, { headers: { 'cache-control': 'public, max-age=60, s-maxage=300' } });
   } catch (exception) {
     const message = exception instanceof Error ? exception.message : '查询失败';
-    const status = message.includes('呼号') ? 400 : 502;
+    const status = message.includes('呼号') ? 400 : 500;
     return error(message, status);
   }
 }

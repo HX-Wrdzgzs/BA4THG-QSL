@@ -27,7 +27,7 @@
     <section class="qso-hero">
       <p class="qso-eyebrow">BA4THG DIGITAL RADIO ARCHIVE</p>
       <h1>全时段通联日志</h1>
-      <p>网站优先读取自有 Cloudflare D1 档案；D1 尚未配置时，会临时显示现有公开 API 的近一年记录。</p>
+      <p>公开查询只读取自有 Cloudflare D1 长期档案；上游公开 API 仅由管理员浏览器用于补充近一年记录，不作为网站实时依赖。</p>
     </section>
 
     <section class="query-panel" aria-labelledby="query-title">
@@ -80,7 +80,7 @@
         </label>
         <button class="solid-button" type="submit">开始查询</button>
       </form>
-      <p class="form-note">查询只在提交表单和翻页时发送，不会高频轮询上游接口。</p>
+      <p class="form-note">查询只读取本站 D1 档案；不会因为访客查询而调用上游 API。</p>
     </section>
 
     <section class="summary-grid" aria-label="通联摘要" data-summary hidden>

@@ -1,5 +1,8 @@
 "use strict";
 
+const UPSTREAM_API = 'https://api.mzyyun.com/public/qso';
+const OPERATOR_CALLSIGN = 'BA4THG';
+
 const tokenInput = document.querySelector('[data-token]');
 const connectButton = document.querySelector('[data-connect]');
 const connection = document.querySelector('[data-connection]');
@@ -50,7 +53,7 @@ function localDateTimeValue(date = new Date()) {
 function resetForm() {
   form.reset();
   form.elements.id.value = '';
-  form.elements.myCallsign.value = 'BA4THG';
+  form.elements.myCallsign.value = OPERATOR_CALLSIGN;
   form.elements.mode.value = 'FM';
   form.elements.qsoDatetime.value = localDateTimeValue();
   form.elements.isPublic.checked = true;
@@ -133,7 +136,7 @@ function createRecord(item) {
 
 function editRecord(item) {
   form.elements.id.value = item.id;
-  form.elements.myCallsign.value = item.myCallsign || 'BA4THG';
+  form.elements.myCallsign.value = item.myCallsign || OPERATOR_CALLSIGN;
   form.elements.theirCallsign.value = item.theirCallsign || '';
   form.elements.qsoDatetime.value = localDateTimeValue(new Date(item.qsoDatetime));
   form.elements.frequency.value = item.frequency || '';
@@ -216,7 +219,7 @@ function parseAdif(text) {
     const iso = `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}T${time.slice(0, 2)}:${time.slice(2, 4)}:${time.slice(4, 6)}Z`;
     recordsOut.push({
       sourceId: fields.APP_QSO_ID || fields.QSO_DATE + time + fields.CALL,
-      myCallsign: fields.STATION_CALLSIGN || fields.OPERATOR || 'BA4THG',
+      myCallsign: fields.STATION_CALLSIGN || fields.OPERATOR || OPERATOR_CALLSIGN,
       theirCallsign: fields.CALL,
       qsoDatetime: iso,
       frequency: fields.FREQ || null,
@@ -335,6 +338,71 @@ async function exportArchive(format) {
   }
 }
 
+async function fetchUpstreamPage(page) {
+  const url = new URL(UPSTREAM_API);
+  url.searchParams.set('callsign', OPERATOR_CALLSIGN);
+  url.searchParams.set('role', 'operator');
+  url.searchParams.set('page', String(page));
+  url.searchParams.set('limit', '50');
+
+  const response = await fetch(url, {
+    method: 'GET',
+    mode: 'cors',
+    credentials: 'omit',
+    headers: { accept: 'application/json' },
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    if (response.status === 403) {
+      throw new Error(`上游 API 拒绝当前 Origin：${location.origin}。请先在小程序“设置 → 网站接入”添加这个完整 Origin。`);
+    }
+    throw new Error(data.error || `上游 API 返回 ${response.status}`);
+  }
+
+  if (data.station && String(data.station).trim().toUpperCase() !== OPERATOR_CALLSIGN) {
+    throw new Error(`当前网站绑定到台站 ${data.station}，不是 ${OPERATOR_CALLSIGN}`);
+  }
+  return data;
+}
+
+async function archiveUpstreamPage(data) {
+  if (!Array.isArray(data.items) || data.items.length === 0) {
+    return { fetched: 0, inserted: 0, updated: 0, linkedToExisting: 0, rejected: 0 };
+  }
+  const result = await api('./api/admin/import-upstream', {
+    method: 'POST',
+    body: JSON.stringify({ station: data.station || OPERATOR_CALLSIGN, items: data.items }),
+  });
+  return result.data;
+}
+
+async function syncFromUpstream() {
+  if (!getToken()) throw new Error('请先输入管理令牌');
+
+  const first = await fetchUpstreamPage(1);
+  const total = Number(first.total || 0);
+  const pageCount = Math.max(1, Math.ceil(total / 50));
+  let fetched = 0;
+  let inserted = 0;
+  let updated = 0;
+  let linked = 0;
+  let rejected = 0;
+
+  for (let page = 1; page <= pageCount; page += 1) {
+    setState(syncState, `浏览器正在读取上游 ${page} / ${pageCount} 页；当前 Origin：${location.origin}`);
+    const data = page === 1 ? first : await fetchUpstreamPage(page);
+    const result = await archiveUpstreamPage(data);
+    fetched += Number(result.fetched || 0);
+    inserted += Number(result.inserted || 0);
+    updated += Number(result.updated || 0);
+    linked += Number(result.linkedToExisting || 0);
+    rejected += Number(result.rejected || 0);
+  }
+
+  return { total, fetched, inserted, updated, linked, rejected };
+}
+
 connectButton.addEventListener('click', loadRecords);
 refreshButton.addEventListener('click', loadRecords);
 resetButton.addEventListener('click', resetForm);
@@ -342,9 +410,13 @@ importButton.addEventListener('click', importRecords);
 syncButton.addEventListener('click', async () => {
   syncButton.disabled = true;
   try {
-    setState(syncState, '正在同步近一年公开记录……');
-    const { data } = await api('./api/sync/mzyyun', { method: 'POST' });
-    setState(syncState, `同步完成：读取 ${data.fetched}，新增 ${data.inserted}，更新 ${data.updated}，关联已有 ${data.linkedToExisting}。`, 'success');
+    setState(syncState, `准备通过当前网站 Origin（${location.origin}）读取近一年公开记录……`);
+    const data = await syncFromUpstream();
+    setState(
+      syncState,
+      `同步完成：上游共 ${data.total} 条，本次归档 ${data.fetched} 条；新增 ${data.inserted}，更新 ${data.updated}，关联已有 ${data.linked}，无效 ${data.rejected}。`,
+      'success',
+    );
     await loadRecords();
   } catch (exception) {
     setState(syncState, exception.message, 'error');

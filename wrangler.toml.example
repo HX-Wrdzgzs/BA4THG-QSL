@@ -4,7 +4,6 @@ pages_build_output_dir = "."
 
 [vars]
 OPERATOR_CALLSIGN = "BA4THG"
-UPSTREAM_API_BASE = "https://api.mzyyun.com"
 
 [[d1_databases]]
 binding = "DB"

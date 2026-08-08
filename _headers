@@ -11,26 +11,11 @@
 /index.html
   Cache-Control: public, max-age=0, must-revalidate
 
-/logbook.html
-  Cache-Control: public, max-age=0, must-revalidate
-
-/admin.html
-  Cache-Control: public, max-age=0, must-revalidate
-
 /app.js
   Cache-Control: public, max-age=0, must-revalidate
 
 /styles.css
   Cache-Control: public, max-age=0, must-revalidate
-
-/qso.js
-  Cache-Control: public, max-age=3600, must-revalidate
-
-/admin.js
-  Cache-Control: public, max-age=3600, must-revalidate
-
-/qso.css
-  Cache-Control: public, max-age=3600, must-revalidate
 
 /图片/thumbs/*
   Cache-Control: public, max-age=31536000, immutable
@@ -40,6 +25,3 @@
 
 /assets/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
-
-/api/*
-  Cache-Control: no-store
